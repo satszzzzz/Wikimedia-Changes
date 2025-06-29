@@ -1,7 +1,17 @@
 # application.yml
 spring:
   kafka:
-    bootstrap-servers: 192.168.1.6:9092
     producer:
+      bootstrap-servers: 192.168.1.2:9092
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    template:
+      default-topic: wikimedia_interactions
+server:
+  port: 8080
+manage:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - prometheus
