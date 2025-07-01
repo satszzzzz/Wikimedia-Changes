@@ -1,5 +1,74 @@
-version: 3.8
+version: "3.8"
 
 services:
   kafka-consumer:
     build: ./kafka-producer-wikimedia #location of docker file
+    container_name: kafka-consumer
+    ports:
+      - "8081:8081"
+    depends_on:
+      - kafka
+      - database
+  kafka-producer:
+    build: ./kafka-consumer-database
+    container_name: kafka-producer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - kafka
+      - database
+  database:
+    image: mysql:8.0
+    container_name: database
+    environment:
+      MYSQL_ROOT_PASSWORD: "admin"
+      MYSQL_DATABASE: "wikimedia_changes_db"
+      MYSQL_USER: "satwik.das"
+      MYSQL_PASSWORD: "changeme"
+    ports:
+      - "3306:3306"
+  mysql-exporter:
+    image: prom/mysqld-exporter
+    environment:
+      DATA_SOURCE_NAME: "satwik-das:changeme@tcp(database:3306)/wikimedia_changes_db"
+    ports:
+      - "9104:9104"
+    depends_on:
+      - database
+  kafka:
+    image: apache/kafka:3.9.1
+    environment:
+      # Simplified KRaft configuration
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      # Auto-create topics
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+  grafana:
+    image: grafana/grafana:10.1.0
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=grafana
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    restart: unless-stopped

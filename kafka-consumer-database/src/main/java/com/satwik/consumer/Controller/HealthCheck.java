@@ -1,4 +1,4 @@
-package com.satwik.springboot.Controller;
+package com.satwik.consumer.Controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
